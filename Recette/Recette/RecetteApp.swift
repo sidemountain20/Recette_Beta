@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-<<<<<<< HEAD
 import Firebase
 
 @main
@@ -14,18 +13,12 @@ struct RecetteApp: App {
     // Firebase初期化用のAppDelegate
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     
-=======
-
-@main
-struct RecetteApp: App {
->>>>>>> main
     var body: some Scene {
         WindowGroup {
             ContentView()
         }
     }
 }
-<<<<<<< HEAD
 
 // プレビュー用のアプリ
 #if DEBUG
@@ -54,5 +47,3 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         return true
     }
 }
-=======
->>>>>>> main

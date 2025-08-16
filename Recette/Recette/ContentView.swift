@@ -8,11 +8,8 @@
 import SwiftUI
 import HealthKit
 
-<<<<<<< HEAD
 
 
-=======
->>>>>>> main
 struct ContentView: View {
     @State private var selectedTab = 0
     
@@ -1027,7 +1024,6 @@ let myPageItems = [
 ]
 
 #Preview {
-<<<<<<< HEAD
     PreviewContentView()
 }
 
@@ -1057,10 +1053,6 @@ extension ContentView {
         // プレビュー用の設定を追加
         return view
     }
-=======
-    ContentView()
-        .environment(\.healthKit, MockHealthKit())
->>>>>>> main
 }
 
 // プレビュー用のモックHealthKit
