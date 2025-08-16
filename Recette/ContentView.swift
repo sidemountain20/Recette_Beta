@@ -8,6 +8,8 @@
 import SwiftUI
 import HealthKit
 
+
+
 struct ContentView: View {
     @State private var selectedTab = 0
     
@@ -1022,8 +1024,35 @@ let myPageItems = [
 ]
 
 #Preview {
-    ContentView()
-        .environment(\.healthKit, MockHealthKit())
+    PreviewContentView()
+}
+
+// プレビュー用のシンプルなビュー
+struct SimplePreviewView: View {
+    var body: some View {
+        VStack {
+            Text("Recette")
+                .font(.largeTitle)
+                .fontWeight(.bold)
+            
+            Text("レシピアプリ")
+                .font(.title2)
+                .foregroundColor(.secondary)
+        }
+    }
+}
+
+#Preview("Simple") {
+    SimplePreviewView()
+}
+
+// プレビュー用の設定
+extension ContentView {
+    static var preview: ContentView {
+        let view = ContentView()
+        // プレビュー用の設定を追加
+        return view
+    }
 }
 
 // プレビュー用のモックHealthKit
