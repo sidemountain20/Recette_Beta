@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>921506653977-6arp5pbnootoa28i2ocqpkodf8p47k9u.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.921506653977-6arp5pbnootoa28i2ocqpkodf8p47k9u</string>
+	<key>API_KEY</key>
+	<string>AIzaSyDcE5LOYSQ60u9MJDGRdbqACcQiQhBiiSU</string>
+	<key>GCM_SENDER_ID</key>
+	<string>921506653977</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.gmail.RecetteUITests</string>
+	<key>PROJECT_ID</key>
+	<string>recette-1-242fc</string>
+	<key>STORAGE_BUCKET</key>
+	<string>recette-1-242fc.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:921506653977:ios:5a96846596454e3ab34788</string>
+</dict>
+</plist>
