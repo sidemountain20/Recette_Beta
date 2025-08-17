@@ -66,28 +66,52 @@ struct MainAppView: View {
 
 // レシピ画面
 struct RecipeView: View {
+    @StateObject private var recipeViewModel = RecipeViewModel()
+    @State private var searchText = ""
+    @State private var selectedTags: Set<String> = []
+    
+    var filteredRecipes: [Recipe] {
+        var recipes = recipeViewModel.recipes
+        
+        // 検索フィルター
+        if !searchText.isEmpty {
+            recipes = recipes.filter { recipe in
+                recipe.title.localizedCaseInsensitiveContains(searchText) ||
+                recipe.description.localizedCaseInsensitiveContains(searchText) ||
+                recipe.tags.contains { $0.localizedCaseInsensitiveContains(searchText) }
+            }
+        }
+        
+        // タグフィルター
+        if !selectedTags.isEmpty {
+            recipes = recipes.filter { recipe in
+                !Set(recipe.tags).isDisjoint(with: selectedTags)
+            }
+        }
+        
+        return recipes
+    }
+    
     var body: some View {
         VStack(spacing: 0) {
             // ヘッダーセクション（赤）
             headerSection
             
             // メインコンテンツエリア（白）
-            ScrollView {
-                LazyVStack(spacing: 16) {
-                    ForEach(0..<10, id: \.self) { index in
-                        recipeCard
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 16)
-                .padding(.bottom, 16)
+            if recipeViewModel.isLoading {
+                loadingView
+            } else if filteredRecipes.isEmpty {
+                emptyStateView
+            } else {
+                recipeListView
             }
-            .background(Color.white)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(Color(red: 0.95, green: 0.95, blue: 0.95))
         .ignoresSafeArea(.container, edges: [.top, .bottom])
         .statusBar(hidden: false)
+        .refreshable {
+            recipeViewModel.loadRecipes()
+        }
     }
     
     // ヘッダーセクション
@@ -99,11 +123,19 @@ struct RecipeView: View {
                     .foregroundColor(.gray)
                     .font(.system(size: 16))
                 
-                Text("キーワードを追加")
+                TextField("キーワードを検索", text: $searchText)
                     .font(.system(size: 16))
-                    .foregroundColor(.gray)
+                    .foregroundColor(.black)
                 
-                Spacer()
+                if !searchText.isEmpty {
+                    Button(action: {
+                        searchText = ""
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.gray)
+                            .font(.system(size: 16))
+                    }
+                }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
@@ -115,9 +147,19 @@ struct RecipeView: View {
             // フィルタータグ
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
-                    FilterTag(text: "和食")
-                    FilterTag(text: "簡単")
-                    FilterTag(text: "4人前")
+                    ForEach(getAllTags(), id: \.self) { tag in
+                        FilterTag(
+                            text: tag,
+                            isSelected: selectedTags.contains(tag),
+                            onTap: {
+                                if selectedTags.contains(tag) {
+                                    selectedTags.remove(tag)
+                                } else {
+                                    selectedTags.insert(tag)
+                                }
+                            }
+                        )
+                    }
                 }
                 .padding(.horizontal, 16)
             }
@@ -128,8 +170,76 @@ struct RecipeView: View {
         .frame(height: 140)
     }
     
-    // レシピカード
-    private var recipeCard: some View {
+    // ローディングビュー
+    private var loadingView: some View {
+        VStack {
+            Spacer()
+            ProgressView("レシピを読み込み中...")
+                .progressViewStyle(CircularProgressViewStyle())
+            Spacer()
+        }
+        .background(Color.white)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+    
+    // 空の状態ビュー
+    private var emptyStateView: some View {
+        VStack(spacing: 16) {
+            Spacer()
+            
+            Image(systemName: "fork.knife")
+                .font(.system(size: 60))
+                .foregroundColor(.gray)
+            
+            Text("レシピが見つかりません")
+                .font(.system(size: 18, weight: .medium))
+                .foregroundColor(.gray)
+            
+            if !searchText.isEmpty || !selectedTags.isEmpty {
+                Text("検索条件を変更してみてください")
+                    .font(.system(size: 14))
+                    .foregroundColor(.gray)
+            } else {
+                Text("レシピを投稿してみましょう！")
+                    .font(.system(size: 14))
+                    .foregroundColor(.gray)
+            }
+            
+            Spacer()
+        }
+        .background(Color.white)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+    
+    // レシピリストビュー
+    private var recipeListView: some View {
+        ScrollView {
+            LazyVStack(spacing: 16) {
+                ForEach(filteredRecipes) { recipe in
+                    RecipeCardView(recipe: recipe, recipeViewModel: recipeViewModel)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
+            .padding(.bottom, 16)
+        }
+        .background(Color.white)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+    
+    // すべてのタグを取得
+    private func getAllTags() -> [String] {
+        let allTags = Set(recipeViewModel.recipes.flatMap { $0.tags })
+        return Array(allTags).sorted()
+    }
+}
+
+// レシピカードビュー
+struct RecipeCardView: View {
+    let recipe: Recipe
+    let recipeViewModel: RecipeViewModel
+    
+    var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // ユーザー情報とアクションアイコン
             HStack {
@@ -138,7 +248,7 @@ struct RecipeView: View {
                         .fill(Color.gray.opacity(0.3))
                         .frame(width: 32, height: 32)
                     
-                    Text("しゅうとのよめ")
+                    Text(recipe.authorName)
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.black)
                 }
@@ -147,7 +257,7 @@ struct RecipeView: View {
                 
                 HStack(spacing: 12) {
                     Button(action: {
-                        // 編集アクション
+                        // 編集アクション（将来的に実装）
                     }) {
                         Image(systemName: "square.and.pencil")
                             .foregroundColor(.gray)
@@ -155,16 +265,22 @@ struct RecipeView: View {
                     }
                     
                     Button(action: {
-                        // お気に入りアクション
+                        recipeViewModel.toggleLike(recipe: recipe)
                     }) {
-                        Image(systemName: "star")
-                            .foregroundColor(.gray)
-                            .font(.system(size: 18))
+                        HStack(spacing: 4) {
+                            Image(systemName: "heart")
+                                .foregroundColor(.red)
+                                .font(.system(size: 18))
+                            
+                            Text("\(recipe.likes)")
+                                .font(.system(size: 12))
+                                .foregroundColor(.red)
+                        }
                     }
                 }
             }
             
-            // レシピ画像
+            // レシピ画像（プレースホルダー）
             Rectangle()
                 .fill(Color(red: 0.8, green: 0.6, blue: 0.4))
                 .frame(height: 200)
@@ -173,28 +289,20 @@ struct RecipeView: View {
                     VStack {
                         Spacer()
                         HStack {
-                            // ご飯の部分
-                            Rectangle()
-                                .fill(Color.white)
-                                .frame(width: 80, height: 60)
-                                .cornerRadius(8)
-                                .overlay(
-                                    Text("ご飯")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.black)
-                                )
-                            
-                            Spacer()
-                            
-                            // カレーの部分
+                            // 材料のプレビュー
                             VStack(spacing: 4) {
-                                ForEach(0..<3) { _ in
-                                    Circle()
-                                        .fill(Color.red)
-                                        .frame(width: 8, height: 8)
+                                ForEach(recipe.ingredients.prefix(3), id: \.id) { ingredient in
+                                    Text(ingredient.name)
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 2)
+                                        .background(Color.black.opacity(0.6))
+                                        .cornerRadius(4)
                                 }
                             }
-                            .padding(.trailing, 20)
+                            
+                            Spacer()
                         }
                         .padding(.horizontal, 20)
                         .padding(.bottom, 20)
@@ -202,49 +310,67 @@ struct RecipeView: View {
                 )
             
             // レシピタイトル
-            Text("嫁カレー")
+            Text(recipe.title)
                 .font(.system(size: 20, weight: .bold))
                 .foregroundColor(.black)
             
+            // レシピ説明
+            if !recipe.description.isEmpty {
+                Text(recipe.description)
+                    .font(.system(size: 14))
+                    .foregroundColor(.gray)
+                    .lineLimit(2)
+            }
+            
             // レシピタグ
             HStack {
-                Text("#和食 #時短 #簡単 #4人前")
+                Text(recipe.tags.map { "#\($0)" }.joined(separator: " "))
                     .font(.system(size: 12))
                     .foregroundColor(.gray)
                 
                 Spacer()
                 
-                Text("推定予算 : ¥2,500-")
+                Text("推定予算 : ¥\(recipe.estimatedBudget)-")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(.black)
             }
             
-            // 材料リスト
+            // 材料リスト（最初の3つまで表示）
             VStack(alignment: .leading, spacing: 4) {
-                Text("ごはん お茶碗 4杯(600g)")
-                    .font(.system(size: 14))
-                    .foregroundColor(.black)
-                Text("赤パプリカ 1/2個")
-                    .font(.system(size: 14))
-                    .foregroundColor(.black)
-                Text("ズッキーニ 1/2本")
-                    .font(.system(size: 14))
-                    .foregroundColor(.black)
-                Text("なす 2本")
-                    .font(.system(size: 14))
-                    .foregroundColor(.black)
-                Text("かぼちゃ [スライス] 4枚(60g)")
-                    .font(.system(size: 14))
-                    .foregroundColor(.black)
-                Text("オクラ 4本")
-                    .font(.system(size: 14))
-                    .foregroundColor(.black)
-                Text("サラダ油 適量")
-                    .font(.system(size: 14))
-                    .foregroundColor(.black)
-                Text("...")
-                    .font(.system(size: 14))
-                    .foregroundColor(.gray)
+                ForEach(recipe.ingredients.prefix(3), id: \.id) { ingredient in
+                    Text("\(ingredient.name) \(ingredient.amount)")
+                        .font(.system(size: 14))
+                        .foregroundColor(.black)
+                }
+                
+                if recipe.ingredients.count > 3 {
+                    Text("...")
+                        .font(.system(size: 14))
+                        .foregroundColor(.gray)
+                }
+            }
+            
+            // 基本情報
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("調理時間: \(recipe.cookingTime)分")
+                        .font(.system(size: 12))
+                        .foregroundColor(.black)
+                    
+                    Text("\(recipe.servings)人前")
+                        .font(.system(size: 12))
+                        .foregroundColor(.black)
+                }
+                
+                Spacer()
+                
+                Text(recipe.difficulty)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(difficultyColor)
+                    .cornerRadius(8)
             }
         }
         .padding(16)
@@ -252,12 +378,28 @@ struct RecipeView: View {
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
     }
+    
+    private var difficultyColor: Color {
+        switch recipe.difficulty {
+        case "簡単":
+            return .green
+        case "普通":
+            return .orange
+        case "難しい":
+            return .red
+        default:
+            return .gray
+        }
+    }
 }
 
 // 買い物リスト画面
 struct ShoppingListView: View {
     @State private var selectedPage = 1
     @State private var checkedItems: Set<String> = []
+    @StateObject private var recipeViewModel = RecipeViewModel()
+    @State private var selectedRecipes: [Recipe] = []
+    @State private var shoppingItems: [ShoppingItem] = []
     
     var body: some View {
         VStack(spacing: 0) {
@@ -285,6 +427,9 @@ struct ShoppingListView: View {
         .background(Color(red: 0.95, green: 0.95, blue: 0.95))
         .ignoresSafeArea(.container, edges: [.top, .bottom])
         .statusBar(hidden: false)
+        .onChange(of: selectedRecipes) { _ in
+            updateShoppingItems()
+        }
     }
     
     // 買い物リストヘッダー
@@ -343,50 +488,65 @@ struct ShoppingListView: View {
         .frame(height: 160)
     }
     
-    // 買い物リストページ1
+    // 買い物リストページ1（レシピ選択）
     private var shoppingListPage1: some View {
         LazyVStack(spacing: 16) {
-            ForEach(0..<10, id: \.self) { _ in
-                shoppingListCard
+            if recipeViewModel.isLoading {
+                ProgressView("お気に入りレシピを読み込み中...")
+                    .padding()
+            } else if recipeViewModel.likedRecipes.isEmpty {
+                Text("お気に入りレシピがありません")
+                    .foregroundColor(.gray)
+                    .padding()
+            } else {
+                ForEach(recipeViewModel.likedRecipes) { recipe in
+                    shoppingListCard(for: recipe)
+                }
             }
         }
     }
     
-    // 買い物リストページ2
+    // 買い物リストページ2（冷蔵庫にある食材を選択）
     private var shoppingListPage2: some View {
         VStack(spacing: 12) {
-            ForEach(shoppingItems, id: \.self) { item in
-                HStack {
-                    Button(action: {
-                        if checkedItems.contains(item.name) {
-                            checkedItems.remove(item.name)
-                        } else {
-                            checkedItems.insert(item.name)
+            if shoppingItems.isEmpty {
+                Text("レシピを選択してください")
+                    .foregroundColor(.gray)
+                    .padding()
+            } else {
+                ForEach(shoppingItems, id: \.id) { item in
+                    HStack {
+                        Button(action: {
+                            if checkedItems.contains(item.id) {
+                                checkedItems.remove(item.id)
+                            } else {
+                                checkedItems.insert(item.id)
+                            }
+                        }) {
+                            Circle()
+                                .fill(checkedItems.contains(item.id) ? Color(red: 0.9, green: 0.2, blue: 0.2) : Color.gray.opacity(0.3))
+                                .frame(width: 24, height: 24)
+                                .overlay(
+                                    checkedItems.contains(item.id) ? 
+                                    Image(systemName: "checkmark")
+                                        .foregroundColor(.white)
+                                        .font(.system(size: 12)) : nil
+                                )
                         }
-                    }) {
-                        Circle()
-                            .fill(checkedItems.contains(item.name) ? Color(red: 0.9, green: 0.2, blue: 0.2) : Color.gray.opacity(0.3))
-                            .frame(width: 24, height: 24)
-                            .overlay(
-                                checkedItems.contains(item.name) ? 
-                                Image(systemName: "checkmark")
-                                    .foregroundColor(.white)
-                                    .font(.system(size: 12)) : nil
-                            )
+                        .buttonStyle(PlainButtonStyle())
+                        
+                        Text(item.name)
+                            .font(.system(size: 16))
+                            .foregroundColor(.black)
+                        
+                        Spacer()
+                        
+                        Text(item.quantity)
+                            .font(.system(size: 14))
+                            .foregroundColor(.gray)
                     }
-                    .buttonStyle(PlainButtonStyle())
-                    
-                    Text(item.name)
-                        .font(.system(size: 16))
-                        .foregroundColor(.black)
-                    
-                    Spacer()
-                    
-                    Text(item.quantity)
-                        .font(.system(size: 14))
-                        .foregroundColor(.gray)
+                    .padding(.vertical, 8)
                 }
-                .padding(.vertical, 8)
             }
         }
         .padding(16)
@@ -394,66 +554,78 @@ struct ShoppingListView: View {
         .cornerRadius(16)
     }
     
-    // 買い物リストページ3
+    // 買い物リストページ3（今日の買い物リスト）
     private var shoppingListPage3: some View {
         VStack(spacing: 12) {
-            ForEach(shoppingItems.filter { !checkedItems.contains($0.name) }, id: \.self) { item in
-                HStack {
-                    Circle()
-                        .fill(Color.gray.opacity(0.3))
-                        .frame(width: 24, height: 24)
-                    
-                    Text(item.name)
-                        .font(.system(size: 16))
-                        .foregroundColor(.black)
-                    
-                    Spacer()
-                    
-                    Text(item.quantity)
-                        .font(.system(size: 14))
-                        .foregroundColor(.gray)
+            let uncheckedItems = shoppingItems.filter { !checkedItems.contains($0.id) }
+            
+            if uncheckedItems.isEmpty {
+                Text("買い物リストは空です")
+                    .foregroundColor(.gray)
+                    .padding()
+            } else {
+                ForEach(uncheckedItems, id: \.id) { item in
+                    HStack {
+                        Circle()
+                            .fill(Color.gray.opacity(0.3))
+                            .frame(width: 24, height: 24)
+                        
+                        Text(item.name)
+                            .font(.system(size: 16))
+                            .foregroundColor(.black)
+                        
+                        Spacer()
+                        
+                        Text(item.quantity)
+                            .font(.system(size: 14))
+                            .foregroundColor(.gray)
+                    }
+                    .padding(.vertical, 8)
                 }
-                .padding(.vertical, 8)
             }
             
             // 予算とカロリー情報
-            VStack(spacing: 8) {
-                HStack {
-                    Text("推定予算")
-                        .font(.system(size: 14))
-                        .foregroundColor(.black)
+            if !selectedRecipes.isEmpty {
+                VStack(spacing: 8) {
+                    HStack {
+                        Text("推定予算")
+                            .font(.system(size: 14))
+                            .foregroundColor(.black)
+                        
+                        Spacer()
+                        
+                        Text("¥\(calculateTotalBudget())-")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.black)
+                    }
                     
-                    Spacer()
-                    
-                    Text("¥2,500-")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.black)
+                    HStack {
+                        Text("平均推定カロリー")
+                            .font(.system(size: 14))
+                            .foregroundColor(.black)
+                        
+                        Spacer()
+                        
+                        Text("\(calculateTotalCalories())kcal/1人前")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.black)
+                    }
                 }
-                
-                HStack {
-                    Text("平均推定カロリー")
-                        .font(.system(size: 14))
-                        .foregroundColor(.black)
-                    
-                    Spacer()
-                    
-                    Text("4,000kcal/1人前")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.black)
-                }
+                .padding(12)
+                .background(Color(red: 1.0, green: 0.95, blue: 0.95))
+                .cornerRadius(8)
             }
-            .padding(12)
-            .background(Color(red: 1.0, green: 0.95, blue: 0.95))
-            .cornerRadius(8)
         }
         .padding(16)
         .background(Color.white)
         .cornerRadius(16)
     }
     
-    // 買い物リストカード
-    private var shoppingListCard: some View {
-        HStack(spacing: 16) {
+    // 買い物リストカード（レシピ用）
+    private func shoppingListCard(for recipe: Recipe) -> some View {
+        let isSelected = selectedRecipes.contains { $0.id == recipe.id }
+        
+        return HStack(spacing: 16) {
             // レシピ画像
             Rectangle()
                 .fill(Color(red: 0.8, green: 0.6, blue: 0.4))
@@ -463,59 +635,55 @@ struct ShoppingListView: View {
             VStack(alignment: .leading, spacing: 8) {
                 // 材料リスト
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("ごはん お茶碗 4杯(600g)")
-                        .font(.system(size: 14))
-                        .foregroundColor(.black)
-                    Text("赤パプリカ 1/2個")
-                        .font(.system(size: 14))
-                        .foregroundColor(.black)
-                    Text("ズッキーニ 1/2本")
-                        .font(.system(size: 14))
-                        .foregroundColor(.black)
-                    Text("...")
-                        .font(.system(size: 14))
-                        .foregroundColor(.gray)
+                    ForEach(recipe.ingredients.prefix(3), id: \.id) { ingredient in
+                        Text("\(ingredient.name) \(ingredient.amount)")
+                            .font(.system(size: 14))
+                            .foregroundColor(.black)
+                    }
+                    if recipe.ingredients.count > 3 {
+                        Text("...")
+                            .font(.system(size: 14))
+                            .foregroundColor(.gray)
+                    }
                 }
                 
                 Divider()
                 
                 // レシピ情報
                 HStack {
-                    Text("嫁カレー")
+                    Text(recipe.title)
                         .font(.system(size: 18, weight: .bold))
                         .foregroundColor(.black)
                     
                     Spacer()
                     
-                    // 数量選択
-                    HStack(spacing: 8) {
-                        Button("-") {
-                            // 数量減少
+                    // 選択ボタン
+                    Button(action: {
+                        if isSelected {
+                            selectedRecipes.removeAll { $0.id == recipe.id }
+                        } else {
+                            selectedRecipes.append(recipe)
                         }
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(.gray)
-                        
-                        Text("1")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.black)
-                        
-                        Button("+") {
-                            // 数量増加
-                        }
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(.gray)
+                    }) {
+                        Text(isSelected ? "選択中" : "選択")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(isSelected ? Color(red: 0.9, green: 0.2, blue: 0.2) : Color.gray)
+                            .cornerRadius(6)
                     }
                 }
                 
                 // 予算とカロリー
                 HStack {
-                    Text("推定予算: ¥2,500-")
+                    Text("推定予算: ¥\(recipe.estimatedBudget)-")
                         .font(.system(size: 12))
                         .foregroundColor(.black)
                     
                     Spacer()
                     
-                    Text("推定カロリー: 2,500kcal")
+                    Text("推定カロリー: \(recipe.estimatedCalories)")
                         .font(.system(size: 12))
                         .foregroundColor(.black)
                 }
@@ -525,6 +693,49 @@ struct ShoppingListView: View {
         .background(Color.white)
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(isSelected ? Color(red: 0.9, green: 0.2, blue: 0.2) : Color.clear, lineWidth: 2)
+        )
+    }
+    
+    // 選択されたレシピから買い物アイテムを更新
+    private func updateShoppingItems() {
+        var allIngredients: [String: (name: String, quantity: String)] = [:]
+        
+        for recipe in selectedRecipes {
+            for ingredient in recipe.ingredients {
+                let key = ingredient.name
+                if let existing = allIngredients[key] {
+                    // 同じ材料がある場合は数量を合計
+                    allIngredients[key] = (name: ingredient.name, quantity: "\(existing.quantity) + \(ingredient.amount)")
+                } else {
+                    allIngredients[key] = (name: ingredient.name, quantity: ingredient.amount)
+                }
+            }
+        }
+        
+        shoppingItems = allIngredients.map { key, value in
+            ShoppingItem(id: key, name: value.name, quantity: value.quantity)
+        }.sorted { $0.name < $1.name }
+    }
+    
+    // 総予算を計算
+    private func calculateTotalBudget() -> String {
+        let total = selectedRecipes.reduce(0) { sum, recipe in
+            let budget = Int(recipe.estimatedBudget.replacingOccurrences(of: "円", with: "").replacingOccurrences(of: "¥", with: "")) ?? 0
+            return sum + budget
+        }
+        return "\(total)"
+    }
+    
+    // 総カロリーを計算
+    private func calculateTotalCalories() -> String {
+        let total = selectedRecipes.reduce(0) { sum, recipe in
+            let calories = Int(recipe.estimatedCalories.replacingOccurrences(of: "kcal", with: "").replacingOccurrences(of: ",", with: "")) ?? 0
+            return sum + calories
+        }
+        return "\(total)"
     }
 }
 
@@ -877,6 +1088,8 @@ struct CalorieView: View {
 
 // ホーム画面
 struct HomeView: View {
+    @State private var showRecipePost = false
+    
     var body: some View {
         VStack(spacing: 0) {
             // ヘッダーセクション（赤）
@@ -895,6 +1108,9 @@ struct HomeView: View {
         .background(Color(red: 0.95, green: 0.95, blue: 0.95))
         .ignoresSafeArea(.container, edges: [.top, .bottom])
         .statusBar(hidden: false)
+        .sheet(isPresented: $showRecipePost) {
+            RecipePostView()
+        }
     }
     
     // ホームヘッダー
@@ -965,7 +1181,7 @@ struct HomeView: View {
             
             // レシピ投稿ボタン
             Button(action: {
-                // レシピ投稿アクション
+                showRecipePost = true
             }) {
                 Text("レシピを投稿する")
                     .font(.system(size: 16, weight: .medium))
@@ -985,48 +1201,55 @@ struct HomeView: View {
 // フィルタータグ
 struct FilterTag: View {
     let text: String
+    let isSelected: Bool
+    let onTap: () -> Void
     
     var body: some View {
-        HStack(spacing: 4) {
-            Text(text)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.black)
-            
-            Button(action: {
-                // タグ削除アクション
-            }) {
-                Image(systemName: "xmark")
-                    .foregroundColor(.black)
-                    .font(.system(size: 10))
+        Button(action: onTap) {
+            HStack(spacing: 4) {
+                Text(text)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(isSelected ? .black : .gray)
+                
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.black)
+                        .font(.system(size: 10))
+                } else {
+                    Image(systemName: "circle")
+                        .foregroundColor(.gray)
+                        .font(.system(size: 10))
+                }
             }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(isSelected ? Color.white : Color.white.opacity(0.7))
+            .cornerRadius(8)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(Color.white)
-        .cornerRadius(8)
+        .buttonStyle(PlainButtonStyle())
     }
-    }
+}
     
     // データモデル
 struct ShoppingItem: Hashable {
+    let id: String
     let name: String
     let quantity: String
-    let isChecked: Bool
 }
 
 let shoppingItems = [
-    ShoppingItem(name: "ごはん", quantity: "4杯", isChecked: true),
-    ShoppingItem(name: "チーズ", quantity: "適量", isChecked: true),
-    ShoppingItem(name: "赤パプリカ", quantity: "1個", isChecked: false),
-    ShoppingItem(name: "ズッキーニ", quantity: "1本", isChecked: false),
-    ShoppingItem(name: "なす", quantity: "4本", isChecked: false),
-    ShoppingItem(name: "かぼちゃ", quantity: "1/4個", isChecked: false),
-    ShoppingItem(name: "オクラ", quantity: "8本", isChecked: false),
-    ShoppingItem(name: "サラダ油", quantity: "適量", isChecked: true),
-    ShoppingItem(name: "カレールウ", quantity: "4人分", isChecked: false),
-    ShoppingItem(name: "合いびき肉", quantity: "600g", isChecked: false),
-    ShoppingItem(name: "玉ねぎ", quantity: "2個", isChecked: true),
-    ShoppingItem(name: "おろししょうが", quantity: "小さじ1", isChecked: true)
+    ShoppingItem(id: "ごはん", name: "ごはん", quantity: "4杯"),
+    ShoppingItem(id: "チーズ", name: "チーズ", quantity: "適量"),
+    ShoppingItem(id: "赤パプリカ", name: "赤パプリカ", quantity: "1個"),
+    ShoppingItem(id: "ズッキーニ", name: "ズッキーニ", quantity: "1本"),
+    ShoppingItem(id: "なす", name: "なす", quantity: "4本"),
+    ShoppingItem(id: "かぼちゃ", name: "かぼちゃ", quantity: "1/4個"),
+    ShoppingItem(id: "オクラ", name: "オクラ", quantity: "8本"),
+    ShoppingItem(id: "サラダ油", name: "サラダ油", quantity: "適量"),
+    ShoppingItem(id: "カレールウ", name: "カレールウ", quantity: "4人分"),
+    ShoppingItem(id: "合いびき肉", name: "合いびき肉", quantity: "600g"),
+    ShoppingItem(id: "玉ねぎ", name: "玉ねぎ", quantity: "2個"),
+    ShoppingItem(id: "おろししょうが", name: "おろししょうが", quantity: "小さじ1")
 ]
 
 let myPageItems = [
@@ -1043,6 +1266,7 @@ let myPageItems = [
 #Preview {
     ContentView()
         .environment(\.healthKit, MockHealthKit())
+        .environmentObject(AuthViewModel())
 }
 
 // プレビュー用の簡単なテストビュー
