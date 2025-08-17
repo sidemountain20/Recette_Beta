@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Firebase
+import GoogleSignIn
 
 @main
 struct RecetteApp: App {
@@ -39,12 +40,41 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         // プレビュー環境ではFirebase初期化をスキップ
         #if DEBUG
         if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1" {
+            print("プレビュー環境のため、Firebase初期化をスキップします")
             return true
         }
         #endif
         
         // Firebase初期化
-        FirebaseApp.configure()
+        do {
+            FirebaseApp.configure()
+            print("Firebase初期化完了")
+        } catch {
+            print("Firebase初期化エラー: \(error)")
+        }
+        
+        // GoogleSignIn設定
+        configureGoogleSignIn()
+        
         return true
+    }
+    
+    private func configureGoogleSignIn() {
+        // GoogleSignInの設定
+        guard let path = Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist"),
+              let plist = NSDictionary(contentsOfFile: path),
+              let clientId = plist["CLIENT_ID"] as? String else {
+            print("GoogleService-Info.plistが見つからないか、CLIENT_IDが設定されていません")
+            print("GoogleSignInは無効化されます")
+            return
+        }
+        
+        // シミュレーター環境での安全な設定
+        #if targetEnvironment(simulator)
+        print("シミュレーター環境でGoogleSignInを設定中...")
+        #endif
+        
+        GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientId)
+        print("GoogleSignIn設定完了: \(clientId)")
     }
 }

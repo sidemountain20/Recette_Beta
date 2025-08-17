@@ -65,6 +65,7 @@
 				D352817D2E4CC9B000D708FD /* FirebaseFirestore in Frameworks */,
 				D352817E2E4CC9B000D708FD /* FirebaseStorage in Frameworks */,
 				D352817F2E4CC9B000D708FD /* FirebaseAnalytics in Frameworks */,
+				D35281822E4CC9C000D708FD /* GoogleSignIn in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -130,6 +131,7 @@
 				D35281792E4CC9B000D708FD /* FirebaseFirestore */,
 				D352817A2E4CC9B000D708FD /* FirebaseStorage */,
 				D352817B2E4CC9B000D708FD /* FirebaseAnalytics */,
+				D35281812E4CC9C000D708FD /* GoogleSignIn */,
 			);
 			productName = Recette;
 			productReference = D38983EB2E49D5FF006798B3 /* Recette.app */;
@@ -215,12 +217,10 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				D35281772E4CC9B000D708FD /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				D35281802E4CC9C000D708FD /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = D38983EC2E49D5FF006798B3 /* Products */;
-			schemeReferences = (
-				D38983E42E49D5FF006798B3 /* Recette.xcscheme */,
-			);
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -595,6 +595,14 @@
 				minimumVersion = 12.1.0;
 			};
 		};
+		D35281802E4CC9C000D708FD /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 7.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -618,15 +626,12 @@
 			package = D35281772E4CC9B000D708FD /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseAnalytics;
 		};
-/* End XCSwiftPackageProductDependency section */
-
-/* Begin XCSchemeReference section */
-		D38983E42E49D5FF006798B3 /* Recette.xcscheme */ = {
-			isa = XCSchemeReference;
-			containerPortal = D38983E32E49D5FF006798B3 /* Project object */;
-			relativePath = xcshareddata/xcschemes/Recette.xcscheme;
+		D35281812E4CC9C000D708FD /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D35281802E4CC9C000D708FD /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
 		};
-/* End XCSchemeReference section */
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = D38983E32E49D5FF006798B3 /* Project object */;
 }

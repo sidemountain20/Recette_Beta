@@ -7,8 +7,27 @@
 
 import SwiftUI
 import HealthKit
+
 struct ContentView: View {
+    @StateObject private var authViewModel = AuthViewModel()
+    
+    var body: some View {
+        Group {
+            if authViewModel.isAuthenticated {
+                MainAppView()
+                    .environmentObject(authViewModel)
+            } else {
+                SignUpView()
+                    .environmentObject(authViewModel)
+            }
+        }
+    }
+}
+
+// メインアプリビュー
+struct MainAppView: View {
     @State private var selectedTab = 0
+    @EnvironmentObject var authViewModel: AuthViewModel
     
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -41,6 +60,7 @@ struct ContentView: View {
                 .tag(3)
         }
         .accentColor(Color(red: 0.9, green: 0.2, blue: 0.2))
+        .navigationBarBackButtonHidden(true)
     }
 }
 
