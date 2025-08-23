@@ -24,8 +24,8 @@ struct RecetteApp: App {
 // プレビュー用のアプリ
 #if DEBUG
 #Preview {
-    ContentView()
-        .environmentObject(AuthViewModel())
+    PreviewContentView()
+        .preferredColorScheme(.light)
 }
 #endif
 
@@ -42,12 +42,8 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         #endif
         
         // Firebase初期化
-        do {
-            FirebaseApp.configure()
-            print("Firebase初期化完了")
-        } catch {
-            print("Firebase初期化エラー: \(error)")
-        }
+        FirebaseApp.configure()
+        print("Firebase初期化完了")
         
         // GoogleSignIn設定
         configureGoogleSignIn()

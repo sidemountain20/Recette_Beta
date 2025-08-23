@@ -15,9 +15,27 @@ class AuthViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage = ""
     
+    private var appleSignInDelegate: AppleSignInDelegate?
+    private var appleSignInPresentationContextProvider: AppleSignInPresentationContextProvider?
+    
     init() {
+        // プレビュー環境での初期化
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1" {
+            print("プレビュー環境でAuthViewModelを初期化中")
+            isAuthenticated = false
+            currentUser = ""
+            isLoading = false
+            errorMessage = ""
+            return
+        }
+        #endif
+        
         // デモ用の初期化
         isAuthenticated = false
+        currentUser = ""
+        isLoading = false
+        errorMessage = ""
     }
     
     // メールアドレスとパスワードでサインアップ
@@ -75,7 +93,7 @@ class AuthViewModel: ObservableObject {
         request.requestedScopes = [.fullName, .email]
         
         let authorizationController = ASAuthorizationController(authorizationRequests: [request])
-        let delegate = AppleSignInDelegate { [weak self] result in
+        appleSignInDelegate = AppleSignInDelegate { [weak self] result in
             DispatchQueue.main.async {
                 self?.isLoading = false
                 
@@ -87,8 +105,11 @@ class AuthViewModel: ObservableObject {
                 }
             }
         }
-        authorizationController.delegate = delegate
-        authorizationController.presentationContextProvider = AppleSignInPresentationContextProvider()
+        
+        appleSignInPresentationContextProvider = AppleSignInPresentationContextProvider()
+        
+        authorizationController.delegate = appleSignInDelegate
+        authorizationController.presentationContextProvider = appleSignInPresentationContextProvider
         authorizationController.performRequests()
     }
     

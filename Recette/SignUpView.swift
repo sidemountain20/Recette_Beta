@@ -166,10 +166,8 @@ struct SignUpView: View {
                                 }
                                 
                                 // Appleサインイン
-                                #if DEBUG
-                                // プレビュー用のモックボタン
                                 Button(action: {
-                                    print("Apple Sign In tapped (Preview)")
+                                    authViewModel.signInWithApple()
                                 }) {
                                     HStack {
                                         Image(systemName: "applelogo")
@@ -185,25 +183,6 @@ struct SignUpView: View {
                                     .cornerRadius(10)
                                 }
                                 .disabled(authViewModel.isLoading)
-                                #else
-                                // 実際のAppleサインインボタン
-                                SignInWithAppleButton(
-                                    onRequest: { request in
-                                        request.requestedScopes = [.fullName, .email]
-                                    },
-                                    onCompletion: { result in
-                                        switch result {
-                                        case .success(let authResults):
-                                            print("Apple Sign In success: \(authResults)")
-                                        case .failure(let error):
-                                            print("Apple Sign In failed: \(error)")
-                                        }
-                                    }
-                                )
-                                .signInWithAppleButtonStyle(.white)
-                                .frame(height: 50)
-                                .cornerRadius(10)
-                                #endif
                                 
                                 // Googleサインイン
                                 Button(action: {
@@ -255,4 +234,5 @@ struct SignUpView: View {
 
 #Preview {
     SignUpView()
+        .environmentObject(AuthViewModel())
 }

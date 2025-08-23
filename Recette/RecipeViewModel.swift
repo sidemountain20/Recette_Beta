@@ -21,9 +21,11 @@ class RecipeViewModel: ObservableObject {
         // プレビュー環境ではFirebaseを初期化しない
         #if DEBUG
         if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1" {
-            print("プレビュー環境のため、Firebase初期化をスキップします")
-            loadDemoRecipes()
-            loadDemoLikedRecipes()
+            print("プレビュー環境のため、RecipeViewModelのFirebase初期化をスキップします")
+            isLoading = false
+            errorMessage = ""
+            recipes = []
+            likedRecipes = []
             return
         }
         #endif

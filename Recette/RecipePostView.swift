@@ -357,39 +357,8 @@ struct RecipePostView: View {
     }
 }
 
-// 材料モデル
-struct Ingredient: Codable, Identifiable, Equatable {
-    let id = UUID()
-    var name: String
-    var amount: String
-    
-    func toDictionary() -> [String: Any] {
-        return [
-            "name": name,
-            "amount": amount
-        ]
-    }
-}
-
-// レシピモデル
-struct Recipe: Codable, Identifiable, Equatable {
-    let id: String
-    let title: String
-    let description: String
-    let ingredients: [Ingredient]
-    let instructions: [String]
-    let cookingTime: String
-    let servings: String
-    let difficulty: String
-    let tags: [String]
-    let estimatedBudget: String
-    let estimatedCalories: String
-    let authorId: String
-    let authorName: String
-    let createdAt: Date
-    var likes: Int
-    let isPublic: Bool
-    
+// Recipe と Ingredient の拡張
+extension Recipe {
     func toDictionary() -> [String: Any] {
         return [
             "id": id,
@@ -412,7 +381,23 @@ struct Recipe: Codable, Identifiable, Equatable {
     }
 }
 
+extension Ingredient {
+    func toDictionary() -> [String: Any] {
+        return [
+            "name": name,
+            "amount": amount
+        ]
+    }
+}
+
 #Preview {
-    RecipePostView()
-        .environmentObject(AuthViewModel())
+    VStack {
+        Text("RecipePostView")
+            .font(.largeTitle)
+            .fontWeight(.bold)
+        Text("レシピ投稿画面のプレビュー")
+            .foregroundColor(.secondary)
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .background(Color.white)
 }

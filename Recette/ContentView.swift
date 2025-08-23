@@ -45,18 +45,14 @@ struct MainAppView: View {
                 }
                 .tag(1)
             
-            Text("カロリー画面")
-                .font(.title)
-                .foregroundColor(.gray)
+            CalorieView()
                 .tabItem {
                     Image(systemName: "scalemass")
                     Text("カロリー")
                 }
                 .tag(2)
             
-            Text("ホーム画面")
-                .font(.title)
-                .foregroundColor(.gray)
+            HomeView()
                 .tabItem {
                     Image(systemName: "house")
                     Text("ホーム")
@@ -97,6 +93,28 @@ struct RecipeView: View {
     }
     
     var body: some View {
+        VStack(spacing: 0) {
+            // ヘッダーセクション（赤）
+            headerSection
+            
+            // メインコンテンツエリア（白）
+            if recipeViewModel.isLoading {
+                loadingView
+            } else if filteredRecipes.isEmpty {
+                emptyStateView
+            } else {
+                recipeListView
+            }
+        }
+        .background(Color(red: 0.95, green: 0.95, blue: 0.95))
+        .ignoresSafeArea(.container, edges: [.top, .bottom])
+        .statusBar(hidden: false)
+        .refreshable {
+            recipeViewModel.loadRecipes()
+        }
+    }
+    
+    private var mainRecipeView: some View {
         VStack(spacing: 0) {
             // ヘッダーセクション（赤）
             headerSection
@@ -413,6 +431,10 @@ struct ShoppingListView: View {
     struct SelectedRecipe: Equatable {
         let recipe: Recipe
         var servings: Int
+        
+        static func == (lhs: SelectedRecipe, rhs: SelectedRecipe) -> Bool {
+            return lhs.recipe.id == rhs.recipe.id && lhs.servings == rhs.servings
+        }
     }
     
     @State private var selectedRecipesWithServings: [SelectedRecipe] = []
@@ -853,6 +875,7 @@ struct ShoppingListView: View {
         }
         return "\(total)"
     }
+}
 
 // カロリー画面
 struct CalorieView: View {
@@ -1345,12 +1368,7 @@ struct FilterTag: View {
     }
 }
     
-    // データモデル
-struct ShoppingItem: Hashable {
-    let id: String
-    let name: String
-    let quantity: String
-}
+
 
 let myPageItems = [
     "アカウント情報",
@@ -1362,10 +1380,8 @@ let myPageItems = [
     "お問い合わせ",
     "ログアウト"
 ]
-}
 
 #Preview {
-    ContentView()
-        .environmentObject(AuthViewModel())
+    PreviewContentView()
         .preferredColorScheme(.light)
 }
