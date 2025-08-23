@@ -45,14 +45,18 @@ struct MainAppView: View {
                 }
                 .tag(1)
             
-            CalorieView()
+            Text("カロリー画面")
+                .font(.title)
+                .foregroundColor(.gray)
                 .tabItem {
                     Image(systemName: "scalemass")
                     Text("カロリー")
                 }
                 .tag(2)
             
-            HomeView()
+            Text("ホーム画面")
+                .font(.title)
+                .foregroundColor(.gray)
                 .tabItem {
                     Image(systemName: "house")
                     Text("ホーム")
@@ -148,17 +152,21 @@ struct RecipeView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(getAllTags(), id: \.self) { tag in
-                        FilterTag(
-                            text: tag,
-                            isSelected: selectedTags.contains(tag),
-                            onTap: {
-                                if selectedTags.contains(tag) {
-                                    selectedTags.remove(tag)
-                                } else {
-                                    selectedTags.insert(tag)
-                                }
+                        Button(action: {
+                            if selectedTags.contains(tag) {
+                                selectedTags.remove(tag)
+                            } else {
+                                selectedTags.insert(tag)
                             }
-                        )
+                        }) {
+                            Text("#\(tag)")
+                                .font(.caption)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(selectedTags.contains(tag) ? Color.blue : Color.blue.opacity(0.1))
+                                .cornerRadius(5)
+                                .foregroundColor(selectedTags.contains(tag) ? .white : .blue)
+                        }
                     }
                 }
                 .padding(.horizontal, 16)
@@ -401,6 +409,14 @@ struct ShoppingListView: View {
     @State private var selectedRecipes: [Recipe] = []
     @State private var shoppingItems: [ShoppingItem] = []
     
+    // 選択されたレシピと人数を管理する構造体
+    struct SelectedRecipe: Equatable {
+        let recipe: Recipe
+        var servings: Int
+    }
+    
+    @State private var selectedRecipesWithServings: [SelectedRecipe] = []
+    
     var body: some View {
         VStack(spacing: 0) {
             // ヘッダーセクション（赤）
@@ -427,7 +443,7 @@ struct ShoppingListView: View {
         .background(Color(red: 0.95, green: 0.95, blue: 0.95))
         .ignoresSafeArea(.container, edges: [.top, .bottom])
         .statusBar(hidden: false)
-        .onChange(of: selectedRecipes) { _ in
+        .onChange(of: selectedRecipesWithServings) {
             updateShoppingItems()
         }
     }
@@ -585,7 +601,7 @@ struct ShoppingListView: View {
             }
             
             // 予算とカロリー情報
-            if !selectedRecipes.isEmpty {
+            if !selectedRecipesWithServings.isEmpty {
                 VStack(spacing: 8) {
                     HStack {
                         Text("推定予算")
@@ -623,7 +639,9 @@ struct ShoppingListView: View {
     
     // 買い物リストカード（レシピ用）
     private func shoppingListCard(for recipe: Recipe) -> some View {
-        let isSelected = selectedRecipes.contains { $0.id == recipe.id }
+        let isSelected = selectedRecipesWithServings.contains { $0.recipe.id == recipe.id }
+        let selectedRecipe = selectedRecipesWithServings.first { $0.recipe.id == recipe.id }
+        let currentServings = selectedRecipe?.servings ?? 1
         
         return HStack(spacing: 16) {
             // レシピ画像
@@ -657,12 +675,48 @@ struct ShoppingListView: View {
                     
                     Spacer()
                     
+                    // 人数選択（選択時のみ表示）
+                    if isSelected {
+                        HStack(spacing: 8) {
+                            Button(action: {
+                                if let index = selectedRecipesWithServings.firstIndex(where: { $0.recipe.id == recipe.id }) {
+                                    if selectedRecipesWithServings[index].servings > 1 {
+                                        selectedRecipesWithServings[index].servings -= 1
+                                    }
+                                }
+                            }) {
+                                Image(systemName: "minus.circle.fill")
+                                    .foregroundColor(.gray)
+                                    .font(.system(size: 16))
+                            }
+                            
+                            Text("\(currentServings)人前")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.black)
+                                .frame(minWidth: 40)
+                            
+                            Button(action: {
+                                if let index = selectedRecipesWithServings.firstIndex(where: { $0.recipe.id == recipe.id }) {
+                                    selectedRecipesWithServings[index].servings += 1
+                                }
+                            }) {
+                                Image(systemName: "plus.circle.fill")
+                                    .foregroundColor(.gray)
+                                    .font(.system(size: 16))
+                            }
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.gray.opacity(0.1))
+                        .cornerRadius(4)
+                    }
+                    
                     // 選択ボタン
                     Button(action: {
                         if isSelected {
-                            selectedRecipes.removeAll { $0.id == recipe.id }
+                            selectedRecipesWithServings.removeAll { $0.recipe.id == recipe.id }
                         } else {
-                            selectedRecipes.append(recipe)
+                            selectedRecipesWithServings.append(SelectedRecipe(recipe: recipe, servings: 1))
                         }
                     }) {
                         Text(isSelected ? "選択中" : "選択")
@@ -703,14 +757,19 @@ struct ShoppingListView: View {
     private func updateShoppingItems() {
         var allIngredients: [String: (name: String, quantity: String)] = [:]
         
-        for recipe in selectedRecipes {
+        for selectedRecipe in selectedRecipesWithServings {
+            let recipe = selectedRecipe.recipe
+            let servings = selectedRecipe.servings
+            
             for ingredient in recipe.ingredients {
                 let key = ingredient.name
+                let scaledAmount = scaleIngredientAmount(ingredient.amount, servings: servings)
+                
                 if let existing = allIngredients[key] {
                     // 同じ材料がある場合は数量を合計
-                    allIngredients[key] = (name: ingredient.name, quantity: "\(existing.quantity) + \(ingredient.amount)")
+                    allIngredients[key] = (name: ingredient.name, quantity: "\(existing.quantity) + \(scaledAmount)")
                 } else {
-                    allIngredients[key] = (name: ingredient.name, quantity: ingredient.amount)
+                    allIngredients[key] = (name: ingredient.name, quantity: scaledAmount)
                 }
             }
         }
@@ -720,24 +779,80 @@ struct ShoppingListView: View {
         }.sorted { $0.name < $1.name }
     }
     
+    // 材料量を人数に応じてスケールする関数
+    private func scaleIngredientAmount(_ amount: String, servings: Int) -> String {
+        // 元のレシピの人数を取得（例: "2人分"から2を抽出）
+        let originalServings = extractServingsFromString(amount)
+        
+        if originalServings > 0 {
+            // 人数に応じてスケール
+            let scaledValue = Double(servings) / Double(originalServings)
+            return formatScaledAmount(amount, scale: scaledValue)
+        } else {
+            // 人数が不明な場合はそのまま返す
+            return amount
+        }
+    }
+    
+    // 文字列から人数を抽出する関数
+    private func extractServingsFromString(_ str: String) -> Int {
+        // "2人分", "4人前"などのパターンを検索
+        let pattern = "(\\d+)人[分前]"
+        if let regex = try? NSRegularExpression(pattern: pattern),
+           let match = regex.firstMatch(in: str, range: NSRange(str.startIndex..., in: str)) {
+            let range = Range(match.range(at: 1), in: str)!
+            return Int(str[range]) ?? 0
+        }
+        return 0
+    }
+    
+    // スケールされた量をフォーマットする関数
+    private func formatScaledAmount(_ originalAmount: String, scale: Double) -> String {
+        // 数字を抽出してスケール
+        let pattern = "(\\d+(?:\\.\\d+)?)"
+        if let regex = try? NSRegularExpression(pattern: pattern),
+           let match = regex.firstMatch(in: originalAmount, range: NSRange(originalAmount.startIndex..., in: originalAmount)) {
+            let range = Range(match.range(at: 1), in: originalAmount)!
+            if let originalValue = Double(originalAmount[range]) {
+                let scaledValue = originalValue * scale
+                let formattedValue = scaledValue.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", scaledValue) : String(format: "%.1f", scaledValue)
+                return originalAmount.replacingOccurrences(of: originalAmount[range], with: formattedValue)
+            }
+        }
+        return originalAmount
+    }
+    
     // 総予算を計算
     private func calculateTotalBudget() -> String {
-        let total = selectedRecipes.reduce(0) { sum, recipe in
-            let budget = Int(recipe.estimatedBudget.replacingOccurrences(of: "円", with: "").replacingOccurrences(of: "¥", with: "")) ?? 0
-            return sum + budget
+        let total = selectedRecipesWithServings.reduce(0) { sum, selectedRecipe in
+            let recipe = selectedRecipe.recipe
+            let servings = selectedRecipe.servings
+            let baseBudget = Int(recipe.estimatedBudget.replacingOccurrences(of: "円", with: "").replacingOccurrences(of: "¥", with: "")) ?? 0
+            
+            // 元のレシピの人数を取得
+            let originalServings = extractServingsFromString(recipe.servings)
+            let servingsRatio = originalServings > 0 ? Double(servings) / Double(originalServings) : 1.0
+            
+            return sum + Int(Double(baseBudget) * servingsRatio)
         }
         return "\(total)"
     }
     
     // 総カロリーを計算
     private func calculateTotalCalories() -> String {
-        let total = selectedRecipes.reduce(0) { sum, recipe in
-            let calories = Int(recipe.estimatedCalories.replacingOccurrences(of: "kcal", with: "").replacingOccurrences(of: ",", with: "")) ?? 0
-            return sum + calories
+        let total = selectedRecipesWithServings.reduce(0) { sum, selectedRecipe in
+            let recipe = selectedRecipe.recipe
+            let servings = selectedRecipe.servings
+            let baseCalories = Int(recipe.estimatedCalories.replacingOccurrences(of: "kcal", with: "").replacingOccurrences(of: ",", with: "")) ?? 0
+            
+            // 元のレシピの人数を取得
+            let originalServings = extractServingsFromString(recipe.servings)
+            let servingsRatio = originalServings > 0 ? Double(servings) / Double(originalServings) : 1.0
+            
+            return sum + Int(Double(baseCalories) * servingsRatio)
         }
         return "\(total)"
     }
-}
 
 // カロリー画面
 struct CalorieView: View {
@@ -1151,7 +1266,7 @@ struct HomeView: View {
                 .foregroundColor(.black)
             
             VStack(spacing: 0) {
-                ForEach(myPageItems, id: \.self) { item in
+                ForEach(["アカウント情報", "お気に入りレシピ", "投稿したレシピ", "閲覧履歴", "利用規約", "プライバシーポリシー", "ヘルプ", "お問い合わせ", "ログアウト"], id: \.self) { item in
                     Button(action: {
                         // 各項目のアクション
                     }) {
@@ -1171,7 +1286,7 @@ struct HomeView: View {
                     }
                     .buttonStyle(PlainButtonStyle())
                     
-                    if item != myPageItems.last {
+                    if item != "ログアウト" {
                         Divider()
                     }
                 }
@@ -1237,21 +1352,6 @@ struct ShoppingItem: Hashable {
     let quantity: String
 }
 
-let shoppingItems = [
-    ShoppingItem(id: "ごはん", name: "ごはん", quantity: "4杯"),
-    ShoppingItem(id: "チーズ", name: "チーズ", quantity: "適量"),
-    ShoppingItem(id: "赤パプリカ", name: "赤パプリカ", quantity: "1個"),
-    ShoppingItem(id: "ズッキーニ", name: "ズッキーニ", quantity: "1本"),
-    ShoppingItem(id: "なす", name: "なす", quantity: "4本"),
-    ShoppingItem(id: "かぼちゃ", name: "かぼちゃ", quantity: "1/4個"),
-    ShoppingItem(id: "オクラ", name: "オクラ", quantity: "8本"),
-    ShoppingItem(id: "サラダ油", name: "サラダ油", quantity: "適量"),
-    ShoppingItem(id: "カレールウ", name: "カレールウ", quantity: "4人分"),
-    ShoppingItem(id: "合いびき肉", name: "合いびき肉", quantity: "600g"),
-    ShoppingItem(id: "玉ねぎ", name: "玉ねぎ", quantity: "2個"),
-    ShoppingItem(id: "おろししょうが", name: "おろししょうが", quantity: "小さじ1")
-]
-
 let myPageItems = [
     "アカウント情報",
     "お気に入りレシピ",
@@ -1262,46 +1362,10 @@ let myPageItems = [
     "お問い合わせ",
     "ログアウト"
 ]
+}
 
 #Preview {
     ContentView()
-        .environment(\.healthKit, MockHealthKit())
         .environmentObject(AuthViewModel())
-}
-
-// プレビュー用の簡単なテストビュー
-struct SimplePreviewView: View {
-    var body: some View {
-        VStack {
-            Text("Recette")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-            
-            Text("レシピアプリ")
-                .font(.title2)
-                .foregroundColor(.secondary)
-        }
-    }
-}
-
-#Preview("Simple") {
-    SimplePreviewView()
-}
-
-// プレビュー用のモックHealthKit
-struct MockHealthKit {
-    func isHealthDataAvailable() -> Bool {
-        return false
-    }
-}
-
-private struct HealthKitKey: EnvironmentKey {
-    static let defaultValue = MockHealthKit()
-}
-
-extension EnvironmentValues {
-    var healthKit: MockHealthKit {
-        get { self[HealthKitKey.self] }
-        set { self[HealthKitKey.self] = newValue }
-    }
+        .preferredColorScheme(.light)
 }

@@ -23,13 +23,9 @@ struct RecetteApp: App {
 
 // プレビュー用のアプリ
 #if DEBUG
-struct RecetteApp_Previews: App {
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
-                .environment(\.healthKit, MockHealthKit())
-        }
-    }
+#Preview {
+    ContentView()
+        .environmentObject(AuthViewModel())
 }
 #endif
 
